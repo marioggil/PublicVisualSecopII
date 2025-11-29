@@ -310,7 +310,7 @@ def generar_nodos_y_enlaces(nit_entidad=None, documento_proveedor=None, departam
     return nodos, enlaces
 
 
-def generar_html_grafo(nodos, enlaces, titulo="Grafo de Contratos", nombre_archivo="grafo_contratos.html"):
+def generar_html_grafo(nodos, enlaces, titulo="Grafo de Contratos", html_full=True,url_tail=""):
     """
     Genera un archivo HTML con visualización de grafo D3.js a partir de nodos y enlaces
     
@@ -318,7 +318,8 @@ def generar_html_grafo(nodos, enlaces, titulo="Grafo de Contratos", nombre_archi
     - nodos: Lista de diccionarios con nodos (entidades y proveedores)
     - enlaces: Lista de diccionarios con enlaces entre nodos
     - titulo: Título del grafo
-    - nombre_archivo: Nombre del archivo HTML a generar
+    - html_full: html completo
+    - url_tail : modificador para los urls
     """
     
     # Convertir nodos a formato JavaScript
@@ -365,9 +366,157 @@ def generar_html_grafo(nodos, enlaces, titulo="Grafo de Contratos", nombre_archi
             </div>"""
     
     # Template HTML
-    html_content = f"""
+    if html_full:
+        html_content = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafo de Contratos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {{
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            align-items: center;
+            justify-content: center;
+        }}
+        #graph {{
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 97%;
+            height: 97%;
+        }}
+        .node {{
+            cursor: pointer;
+            transition: r 0.2s;
+        }}
+        .node:hover {{
+            stroke: #333;
+            stroke-width: 3px;
+        }}
+        .node-label {{
+            font-size: 12px;
+            pointer-events: none;
+            user-select: none;
+            fill: #333;
+            font-weight: 500;
+        }}
+        .link {{
+            stroke-opacity: 0.6;
+        }}
+        .link:hover {{
+            stroke: #2cf105;
+            stroke-width: 3px;
+        }}
+        .tooltip {{
+            position: absolute;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }}
+        .infodiv {{
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            display: flex;
+            flex-wrap: wrap;
+        }}
+        #title {{
+            width: 100%;
+            height: 30px;
+            background: gray;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            align-items: center;
+            justify-content: center;
+            display: flex;
+        }}
+        .legend {{
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 999;
+            transition: transform 0.3s ease;
+        }}
+        .legend.hidden {{
+            transform: translateX(350px);
+        }}
+        .legend h3 {{
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+        }}
+        .legend-section {{
+            margin-bottom: 20px;
+        }}
+        .legend-section h4 {{
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+        }}
+        .legend-item {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }}
+        .legend-color {{
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }}
+        .legend-line {{
+            width: 30px;
+            height: 3px;
+            margin-right: 10px;
+        }}
+        .toggle-legend-btn {{
+            position: fixed;
+            top: 30px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: background 0.3s;
+        }}
+        .toggle-legend-btn:hover {{
+            background: #45a049;
+        }}
+    </style>
+</head>
+<body>
+    <button class="toggle-legend-btn" onclick="toggleLegend()">Mostrar/Ocultar Leyenda</button>
 
-    
     <div class="infodiv">
         <div id="title" class="title">
             <p style="margin: 0px">{titulo}</p>
@@ -375,7 +524,57 @@ def generar_html_grafo(nodos, enlaces, titulo="Grafo de Contratos", nombre_archi
         <div id="tooltip" class="tooltip"></div>
         <svg id="graph"></svg>
         
+        <div id="legend" class="legend">
+            <h3>Leyenda del Grafo</h3>
 
+            <div class="legend-section">
+                <h4>Nodos - Entidades</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #6da2c4;"></div>
+                    <span>Entidades (azul)</span>
+                </div>
+            </div>
+
+            <div class="legend-section">
+                <h4>Nodos - Proveedores</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #1dc96a;"></div>
+                    <span>Proveedores (verde)</span>
+                </div>
+            </div>
+
+            <div class="legend-section">
+                <h4>Enlaces (Contratos)</h4>
+                <div class="legend-item">
+                    <div class="legend-line" style="background: #ff0000;"></div>
+                    <span>Relación contractual</span>
+                </div>
+            </div>
+
+            <div class="legend-section">
+                <h4>Tamaño de nodos</h4>
+                <div class="legend-item">
+                    <span>Representa el número de contratos</span>
+                </div>
+            </div>
+
+            <div class="legend-section">
+                <h4>Estadísticas</h4>
+                <div class="legend-item">
+                    <span>Total nodos: {len(nodos)}</span>
+                </div>
+                <div class="legend-item">
+                    <span>Total enlaces: {len(enlaces)}</span>
+                </div>
+                <div class="legend-item">
+                    <span>Entidades: {len([n for n in nodos if n['tipo'] == 'entidad'])}</span>
+                </div>
+                <div class="legend-item">
+                    <span>Proveedores: {len([n for n in nodos if n['tipo'] == 'proveedor'])}</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         const nodes = {nodos_js};
@@ -560,13 +759,212 @@ def generar_html_grafo(nodos, enlaces, titulo="Grafo de Contratos", nombre_archi
             simulation.alpha(0.3).restart();
         }});
     </script>
+</body>
+</html>"""
+    else:
+        html_content = f"""
+
+    
+    <div class="infodiv">
+        <div id="title" class="title">
+            <button onclick="location.href='/html/graph_rel/{url_tail}'" class="btn primary">Mas detalles</a>
+        </div>
+        <div id="tooltip" class="tooltip"></div>
+        <svg id="graph"></svg>
+        
+
+
+    <script>
+        const nodes = {nodos_js};
+        
+        const links = {enlaces_js};
+
+        function toggleLegend() {{
+            const legend = document.getElementById('legend');
+            legend.classList.toggle('hidden');
+        }}
+
+        function formatNumber(num) {{
+            return new Intl.NumberFormat('es-CO', {{ 
+                style: 'currency', 
+                currency: 'COP',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }}).format(num);
+        }}
+
+        // Configuración del SVG
+        const width = window.innerWidth - 40;
+        const height = window.innerHeight - 40;
+
+        const svg = d3.select('#graph')
+            .attr('width', width)
+            .attr('height', height);
+
+        const tooltip = d3.select('#tooltip');
+
+        // Contenedor para zoom
+        const g = svg.append('g');
+
+        // Zoom
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .on('zoom', (event) => {{
+                g.attr('transform', event.transform);
+            }});
+
+        svg.call(zoom);
+        svg.call(zoom.transform, d3.zoomIdentity
+            .translate(width / 2, height / 2)
+            .scale(0.5)
+            .translate(-width / 2, -height / 2)
+        );
+
+        // Simulación de fuerzas
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id).distance(50))
+            .force('charge', d3.forceManyBody().strength(-2))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => d.size +5 ));
+
+        // Crear enlaces
+        const link = g.append('g')
+            .selectAll('line')
+            .data(links)
+            .join('line')
+            .attr('class', 'link')
+            .attr('stroke', d => d.color)
+            .attr('stroke-width', d => Math.max(2, Math.min(10, d.cantidad_contratos / 2)))
+            .on('mouseover', (event, d) => {{
+                tooltip
+                    .style('opacity', 0)
+                    .html(`
+                        <strong>Relación Contractual</strong><br>
+                        Entidad: ${{nodes.find(n => n.id === d.source.id).name}}<br>
+                        Proveedor: ${{nodes.find(n => n.id === d.target.id).name}}<br>
+                        Contratos: ${{d.cantidad_contratos}}<br>
+                        Valor total: ${{formatNumber(d.valor_contrato)}}
+                    `)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 10) + 'px');
+                
+                node
+                    .filter(n => n.id === d.source.id || n.id === d.target.id)
+                    .attr('stroke', '#2cf105')
+                    .attr('stroke-width', 3);
+            }})
+            .on('mouseout', () => {{
+                tooltip.style('opacity', 0);
+                node
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 2);
+            }});
+
+        // Crear nodos
+        const node = g.append('g')
+            .selectAll('circle')
+            .data(nodes)
+            .join('circle')
+            .attr('class', 'node')
+            .attr('r', d => Math.max(5, Math.min(50, d.size)))
+            .attr('fill', d => d.color)
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2)
+            .call(drag(simulation))
+            .on('mouseover', (event, d) => {{
+                let tooltipContent = `<strong>${{d.name}}</strong><br>`;
+                tooltipContent += `Tipo: ${{d.tipo === 'entidad' ? 'Entidad' : 'Proveedor'}}<br>`;
+                tooltipContent += `ID: ${{d.id}}<br>`;
+                
+                if (d.tipo === 'entidad') {{
+                    tooltipContent += `Departamento: ${{d.dep || 'N/A'}}<br>`;
+                }} else {{
+                    tooltipContent += `PyME: ${{d.es_pyme}}<br>`;
+                    tooltipContent += `Grupo: ${{d.es_grupo}}<br>`;
+                }}
+                
+                tooltipContent += `Contratos: ${{d.cantidad_contratos}}<br>`;
+                tooltipContent += `Valor total: ${{formatNumber(d.valor)}}`;
+                
+                tooltip
+                    .style('opacity', 0)
+                    .html(tooltipContent)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 10) + 'px');
+            }})
+            .on('mouseout', () => {{
+                tooltip.style('opacity', 0);
+            }});
+
+        // Etiquetas de nodos
+        const label = g.append('g')
+            .selectAll('text')
+            .data(nodes)
+            .join('text')
+            .attr('class', 'node-label')
+            .attr('text-anchor', 'middle')
+            .attr('dy', d => -(Math.max(5, Math.min(50, d.size)) + 5));
+            //.text(d => d.name.length > 30 ? d.name.substring(0, 30) + '...' : d.name);
+
+        // Actualizar posiciones en cada tick
+        simulation.on('tick', () => {{
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            label
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        }});
+
+        // Función de arrastre
+        function drag(simulation) {{
+            function dragstarted(event) {{
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }}
+
+            function dragged(event) {{
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }}
+
+            function dragended(event) {{
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }}
+
+            return d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended);
+        }}
+
+        // Ajustar tamaño al cambiar ventana
+        window.addEventListener('resize', () => {{
+            const newWidth = window.innerWidth - 40;
+            const newHeight = window.innerHeight - 40;
+            svg.attr('width', newWidth).attr('height', newHeight);
+            simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2));
+            simulation.alpha(0.01).restart();
+        }});
+    </script>
 """
+    
 
 
     return html_content
 
 
-# ============= EJEMPLO DE USO COMPLETO =============
+
 
 
 
@@ -576,145 +974,221 @@ def generar_html_grafo(nodos, enlaces, titulo="Grafo de Contratos", nombre_archi
 
 
 @app.get('/html/graph_rel/', response_class=HTMLResponse)
-async def graph(request: Request):
+async def graph(request: Request,
+    nit_entidad=None, 
+    documento_proveedor=None, 
+    valor_minimo=None, 
+    valor_maximo=None,
+    tamano_min:int=5, 
+    tamano_max:int =200,
+    html_full:bool=False
+    ):
     
-    nodos, enlaces = generar_nodos_y_enlaces(tamano_min=3, tamano_max=120)
-    html_content =generar_html_grafo(
+    nodos, enlaces = generar_nodos_y_enlaces(nit_entidad=nit_entidad,documento_proveedor=documento_proveedor,
+                                            tamano_min=tamano_min, tamano_max=tamano_max,
+                                            valor_minimo=valor_minimo,valor_maximo=valor_maximo)
+    url_tail =["html_full=True"]
+    
+    if nit_entidad:
+        url_tail.append("nit_entidad="+ nit_entidad)
+    
+    if documento_proveedor:
+        url_tail.append("documento_proveedor" + documento_proveedor)
+    
+    if valor_minimo:
+        url_tail.append("valor_contrato"+ str(valor_minimo))
+    
+    if valor_maximo:
+        url_tail.append("valor_contrato" + str(valor_maximo))
+    str_url_tail=""
+    if len(url_tail)>0:
+        str_url_tail="?"+url_tail[0]
+        if len(url_tail)>1:
+            str_url_tail="&".join(url_tail[1:])
+
+    print(str_url_tail)
+    html_content = generar_html_grafo(
     nodos=nodos,
     enlaces=enlaces,
     titulo="Red de Contratos con Tamaños Normalizados",
-    nombre_archivo="grafo_normalizado.html"
+    html_full=html_full,
+    url_tail=str_url_tail
     )
     
     
     return HTMLResponse(content=html_content)#templates.TemplateResponse("graph_ente_prove.html", context)
 
-@app.get('/html/leyenda.html', response_class=HTMLResponse)
-async def leyend(request: Request):
 
-    html_content = """<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grafo de Contratos</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            align-items: center;
-            justify-content: center;
-        }
-                .legend {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            max-width: 300px;
-            max-height: 80vh;
-            overflow-y: auto;
-            z-index: 999;
-            transition: transform 0.3s ease;
-        }
-        .legend.hidden {
-            transform: translateX(350px);
-        }
-        .legend h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 16px;
-            color: #333;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 8px;
-        }
-        .legend-section {
-            margin-bottom: 20px;
-        }
-        .legend-section h4 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #666;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 12px;
-        }
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-right: 10px;
-            border: 2px solid #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .legend-line {
-            width: 30px;
-            height: 3px;
-            margin-right: 10px;
-        }
-        </style>
-    </head>
-<body>
-    <div id="legend" class="legend">
-            <h3>Leyenda del Grafo</h3>
-
-            <div class="legend-section">
-                <h4>Nodos - Entidades</h4>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #6da2c4;"></div>
-                    <span>Entidades (azul)</span>
-                </div>
-            </div>
-
-            <div class="legend-section">
-                <h4>Nodos - Proveedores</h4>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #1dc96a;"></div>
-                    <span>Proveedores (verde)</span>
-                </div>
-            </div>
-
-            <div class="legend-section">
-                <h4>Enlaces (Contratos)</h4>
-                <div class="legend-item">
-                    <div class="legend-line" style="background: #ff0000;"></div>
-                    <span>Relación contractual</span>
-                </div>
-            </div>
-
-            <div class="legend-section">
-                <h4>Tamaño de nodos</h4>
-                <div class="legend-item">
-                    <span>Representa el número de contratos</span>
-                </div>
-            </div>
-
-            <div class="legend-section">
-                <h4>Estadísticas</h4>
-                <div class="legend-item">
-                    <span>Total nodos: {len(nodos)}</span>
-                </div>
-                <div class="legend-item">
-                    <span>Total enlaces: {len(enlaces)}</span>
-                </div>
-                <div class="legend-item">
-                    <span>Entidades: {len([n for n in nodos if n['tipo'] == 'entidad'])}</span>
-                </div>
-                <div class="legend-item">
-                    <span>Proveedores: {len([n for n in nodos if n['tipo'] == 'proveedor'])}</span>
-                </div>
-            </div>
+@app.get("/html/contratos/total")
+async def obtener_total_contratos(
+    nit_entidad: Optional[str] = Query(None, description="Filtrar por NIT de entidad"),
+    documento_proveedor: Optional[str] = Query(None, description="Filtrar por documento de proveedor"),
+    departamento: Optional[str] = Query(None, description="Filtrar por departamento"),
+    valor_minimo: Optional[float] = Query(None, description="Valor mínimo del contrato"),
+    valor_maximo: Optional[float] = Query(None, description="Valor máximo del contrato"),
+    fecha_inicio: Optional[str] = Query(None, description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: Optional[str] = Query(None, description="Fecha fin (YYYY-MM-DD)")
+):
+    """
+    Retorna el total de contratos según los filtros aplicados.
+    """
+    
+    # Construir query
+    query_base = (db.contratos.id > 0)
+    
+    if nit_entidad:
+        query_base &= (db.contratos.nit_entidad == nit_entidad)
+    
+    if documento_proveedor:
+        query_base &= (db.contratos.documento_proveedor == documento_proveedor)
+    
+    if departamento:
+        query_base &= (db.contratos.departamento == departamento)
+    
+    if valor_minimo:
+        query_base &= (db.contratos.valor_contrato >= valor_minimo)
+    
+    if valor_maximo:
+        query_base &= (db.contratos.valor_contrato <= valor_maximo)
+    
+    if fecha_inicio:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query_base &= (db.contratos.fecha_inicio >= fecha_inicio_dt)
+    
+    if fecha_fin:
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        query_base &= (db.contratos.fecha_fin <= fecha_fin_dt)
+    
+    total = db(query_base).count()
+    
+    # Calcular valor total
+    suma_valor = db.contratos.valor_contrato.sum()
+    resultado_valor = db(query_base).select(suma_valor).first()
+    valor_total = int(resultado_valor[suma_valor] or 0)
+    
+    html_content=f"""
+    <div class="card">
+        <img src="static/img/marker-icon.png" alt="Avatar" style="width:100%">
+        <div class="container">
+            <h4><b>{total}</b></h4>
+            <p>Cantidad de contratos</p>
         </div>
     </div>
-</body>
-</html>
-    """
+
+
+    <div class="card">
+        <img src="static/img/marker-icon.png" alt="Avatar" style="width:100%">
+        <div class="container">
+            <h4><b>{valor_total}</b></h4>
+            <p>Valor total de los pagos de contratos</p>
+        
+        </div>
+    </div>  
+"""
     return HTMLResponse(content=html_content)
+
+
+@app.get("/api/entidades/total")
+async def obtener_total_entidades(
+    nit_entidad: Optional[str] = Query(None, description="Filtrar por NIT de entidad específico"),
+    documento_proveedor: Optional[str] = Query(None, description="Filtrar por documento de proveedor"),
+    departamento: Optional[str] = Query(None, description="Filtrar por departamento"),
+    valor_minimo: Optional[float] = Query(None, description="Valor mínimo del contrato"),
+    valor_maximo: Optional[float] = Query(None, description="Valor máximo del contrato"),
+    fecha_inicio: Optional[str] = Query(None, description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: Optional[str] = Query(None, description="Fecha fin (YYYY-MM-DD)")
+):
+    """
+    Retorna el total de entidades únicas según los filtros aplicados.
+    """
+    
+    # Construir query
+    query_base = (db.contratos.nit_entidad != None)
+    
+    if nit_entidad:
+        query_base &= (db.contratos.nit_entidad == nit_entidad)
+    
+    if documento_proveedor:
+        query_base &= (db.contratos.documento_proveedor == documento_proveedor)
+    
+    if departamento:
+        query_base &= (db.contratos.departamento == departamento)
+    
+    if valor_minimo:
+        query_base &= (db.contratos.valor_contrato >= valor_minimo)
+    
+    if valor_maximo:
+        query_base &= (db.contratos.valor_contrato <= valor_maximo)
+    
+    if fecha_inicio:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query_base &= (db.contratos.fecha_inicio >= fecha_inicio_dt)
+    
+    if fecha_fin:
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        query_base &= (db.contratos.fecha_fin <= fecha_fin_dt)
+    
+    # Contar entidades únicas
+    entidades = db(query_base).select(
+        db.contratos.nit_entidad,
+        groupby=db.contratos.nit_entidad
+    )
+    
+    total_entidades = len(entidades)
+    
+    return {
+        "total_entidades": total_entidades
+    }
+
+
+@app.get("/api/proveedores/total")
+async def obtener_total_proveedores(
+    nit_entidad: Optional[str] = Query(None, description="Filtrar por NIT de entidad"),
+    documento_proveedor: Optional[str] = Query(None, description="Filtrar por documento de proveedor específico"),
+    departamento: Optional[str] = Query(None, description="Filtrar por departamento"),
+    valor_minimo: Optional[float] = Query(None, description="Valor mínimo del contrato"),
+    valor_maximo: Optional[float] = Query(None, description="Valor máximo del contrato"),
+    fecha_inicio: Optional[str] = Query(None, description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: Optional[str] = Query(None, description="Fecha fin (YYYY-MM-DD)")
+):
+    """
+    Retorna el total de proveedores únicos según los filtros aplicados.
+    """
+    
+    # Construir query
+    query_base = (db.contratos.documento_proveedor != None)
+    
+    if nit_entidad:
+        query_base &= (db.contratos.nit_entidad == nit_entidad)
+    
+    if documento_proveedor:
+        query_base &= (db.contratos.documento_proveedor == documento_proveedor)
+    
+    if departamento:
+        query_base &= (db.contratos.departamento == departamento)
+    
+    if valor_minimo:
+        query_base &= (db.contratos.valor_contrato >= valor_minimo)
+    
+    if valor_maximo:
+        query_base &= (db.contratos.valor_contrato <= valor_maximo)
+    
+    if fecha_inicio:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query_base &= (db.contratos.fecha_inicio >= fecha_inicio_dt)
+    
+    if fecha_fin:
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        query_base &= (db.contratos.fecha_fin <= fecha_fin_dt)
+    
+    # Contar proveedores únicos
+    proveedores = db(query_base).select(
+        db.contratos.documento_proveedor,
+        groupby=db.contratos.documento_proveedor
+    )
+    
+    total_proveedores = len(proveedores)
+    
+    return {
+        "total_proveedores": total_proveedores
+    }

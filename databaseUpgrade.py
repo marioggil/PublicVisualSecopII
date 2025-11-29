@@ -1561,16 +1561,13 @@ reloj=time.time()
 # print(time.time()-reloj)
 
 for item in client.get_all(ContratosSecopII):
-    print("vivo")
     if db(db["contratos"].id_contrato == item["id_contrato"]).select():
         continue
     n=guardar_contratos([item])
     p=procesar_contrato_completo(item)
     t+=1
-    if t % 50:
+    if t % 50==0:
         print(t,n,p)
-    if t % 5000 == 0:
-        break
     
 print(time.time()-reloj)
 contratosindb = db(db.contratos).select(
