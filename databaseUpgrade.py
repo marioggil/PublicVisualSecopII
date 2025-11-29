@@ -1540,9 +1540,9 @@ client = Socrata("www.datos.gov.co", claveApiSocrata)
 
 SancionesSecopI="4n4q-k399"
 AntededentesSiri="iaeu-rcn6"
-ContratosSecopII="jbjy-vk9h"
-AdicionesSecopII="cb9c-h8sn"
-EjecucionesSecopII="mfmm-jqmq"
+ContratosSecopII="jbjy-vk9h"#https://www.datos.gov.co/Estad-sticas-Nacionales/SECOP-II-Contratos-Electr-nicos/jbjy-vk9h/about_data
+AdicionesSecopII="cb9c-h8sn"#https://www.datos.gov.co/Estad-sticas-Nacionales/SECOP-II-Adiciones/cb9c-h8sn/about_data
+EjecucionesSecopII="mfmm-jqmq"#https://www.datos.gov.co/Estad-sticas-Nacionales/SECOP-II-Ejecuci-n-Contratos/mfmm-jqmq/data_preview
 t=0
 
 reloj=time.time()
