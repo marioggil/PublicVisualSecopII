@@ -6,20 +6,127 @@ import pandas as pd
 from sodapy import Socrata
 import time
 from models.db import db
-# Configuración de la base de datos
+from datetime import datetime, timedelta
 
+def estimar_tiempo_restante(total, procesados, tiempo_transcurrido):
+    """
+    Calcula el tiempo estimado restante para completar un proceso.
+    
+    Args:
+        total (int): Cantidad total de elementos a procesar
+        procesados (int): Cantidad de elementos ya procesados
+        tiempo_transcurrido (float): Tiempo en segundos que ha tomado procesar los elementos actuales
+    
+    Returns:
+        dict: Diccionario con:
+            - segundos_restantes (float): Segundos estimados para completar
+            - fecha_hora_fin (datetime): Fecha y hora estimada de finalización
+            - velocidad (float): Elementos procesados por segundo
+            - porcentaje_completado (float): Porcentaje del proceso completado
+    
+    Raises:
+        ValueError: Si los valores de entrada no son válidos
+    """
+    # Validaciones
+    if total <= 0:
+        raise ValueError("El total debe ser mayor a 0")
+    
+    if procesados < 0:
+        raise ValueError("Los elementos procesados no pueden ser negativos")
+    
+    if procesados > total:
+        raise ValueError("Los elementos procesados no pueden ser mayores al total")
+    
+    if tiempo_transcurrido < 0:
+        raise ValueError("El tiempo transcurrido no puede ser negativo")
+    
+    # Si ya se completó todo
+    if procesados >= total:
+        return {
+            'segundos_restantes': 0,
+            'fecha_hora_fin': datetime.now(),
+            'velocidad': procesados / tiempo_transcurrido if tiempo_transcurrido > 0 else 0,
+            'porcentaje_completado': 100.0
+        }
+    
+    # Si no se ha procesado nada aún o no ha transcurrido tiempo
+    if procesados == 0 or tiempo_transcurrido == 0:
+        return {
+            'segundos_restantes': None,
+            'fecha_hora_fin': None,
+            'velocidad': 0,
+            'porcentaje_completado': 0.0
+        }
+    
+    # Calcular velocidad de procesamiento (elementos por segundo)
+    velocidad = procesados / tiempo_transcurrido
+    
+    # Calcular elementos restantes
+    elementos_restantes = total - procesados
+    
+    # Calcular tiempo restante en segundos
+    segundos_restantes = elementos_restantes / velocidad
+    
+    # Calcular fecha y hora de finalización
+    fecha_hora_fin = datetime.now() + timedelta(seconds=segundos_restantes)
+    
+    # Calcular porcentaje completado
+    porcentaje_completado = (procesados / total) * 100
+    
+    return {
+        'segundos_restantes': segundos_restantes,
+        'fecha_hora_fin': fecha_hora_fin,
+        'velocidad': velocidad,
+        'porcentaje_completado': porcentaje_completado
+    }
+
+
+def formatear_tiempo(segundos):
+    """
+    Formatea segundos en una cadena legible (días, horas, minutos, segundos).
+    
+    Args:
+        segundos (float): Cantidad de segundos
+    
+    Returns:
+        str: Tiempo formateado en formato legible
+    """
+    if segundos is None:
+        return "Tiempo no disponible"
+    
+    if segundos < 0:
+        return "Tiempo inválido"
+    
+    dias = int(segundos // 86400)
+    horas = int((segundos % 86400) // 3600)
+    minutos = int((segundos % 3600) // 60)
+    segs = int(segundos % 60)
+    
+    partes = []
+    if dias > 0:
+        partes.append(f"{dias} día{'s' if dias != 1 else ''}")
+    if horas > 0:
+        partes.append(f"{horas} hora{'s' if horas != 1 else ''}")
+    if minutos > 0:
+        partes.append(f"{minutos} minuto{'s' if minutos != 1 else ''}")
+    if segs > 0 or not partes:
+        partes.append(f"{segs} segundo{'s' if segs != 1 else ''}")
+    
+    return ", ".join(partes)
+
+# Configuración de la base de datos
 
 # Mapeo de nombres de columnas (original -> nombre en BD)
 COLUMN_MAPPING = {
-    'nombre_entidad': 'nombre_entidad',
+    'nombre_entidad': None,  # Removido de la BD
     'nit_entidad': 'nit_entidad',
-    'departamento': 'departamento',
-    'ciudad': 'ciudad',
-    'localizaci_n': 'localizacion',
-    'orden': 'orden',
-    'sector': 'sector',
-    'rama': 'rama',
-    'entidad_centralizada': 'entidad_centralizada',
+    'departamento': None,  # Removido de la BD
+    'ciudad': None,  # Removido de la BD
+    'localizaci_n': None,  # Removido de la BD
+    'orden': None,  # Removido de la BD
+    'sector': None,  # Removido de la BD
+    'rama': None,  # Removido de la BD
+    'entidad_centralizada': None,  # Removido de la BD
     'proceso_de_compra': 'proceso_compra',
     'id_contrato': 'id_contrato',
     'referencia_del_contrato': 'referencia_contrato',
@@ -33,11 +140,11 @@ COLUMN_MAPPING = {
     'fecha_de_inicio_del_contrato': 'fecha_inicio',
     'fecha_de_fin_del_contrato': 'fecha_fin',
     'condiciones_de_entrega': 'condiciones_entrega',
-    'tipodocproveedor': 'tipo_doc_proveedor',
+    'tipodocproveedor': None,  # Removido de la BD
     'documento_proveedor': 'documento_proveedor',
-    'proveedor_adjudicado': 'proveedor_adjudicado',
-    'es_grupo': 'es_grupo',
-    'es_pyme': 'es_pyme',
+    'proveedor_adjudicado': None,  # Removido de la BD
+    'es_grupo': None,  # Removido de la BD
+    'es_pyme': None,  # Removido de la BD
     'habilita_pago_adelantado': 'habilita_pago_adelantado',
     'liquidaci_n': 'liquidacion',
     'obligaci_n_ambiental': 'obligacion_ambiental',
@@ -63,12 +170,12 @@ COLUMN_MAPPING = {
     'puntos_del_acuerdo': 'puntos_acuerdo',
     'pilares_del_acuerdo': 'pilares_acuerdo',
     'urlproceso': 'url_proceso',
-    'nombre_representante_legal': 'nombre_representante_legal',
-    'nacionalidad_representante_legal': 'nacionalidad_representante_legal',
-    'domicilio_representante_legal': 'domicilio_representante_legal',
-    'tipo_de_identificaci_n_representante_legal': 'tipo_identificacion_representante_legal',
+    'nombre_representante_legal': None,  # Removido de la BD
+    'nacionalidad_representante_legal': None,  # Removido de la BD
+    'domicilio_representante_legal': None,  # Removido de la BD
+    'tipo_de_identificaci_n_representante_legal': None,  # Removido de la BD
     'identificaci_n_representante_legal': 'identificacion_representante_legal',
-    'g_nero_representante_legal': 'genero_representante_legal',
+    'g_nero_representante_legal': None,  # Removido de la BD
     'presupuesto_general_de_la_nacion_pgn': 'presupuesto_pgn',
     'sistema_general_de_participaciones': 'sistema_participaciones',
     'sistema_general_de_regal_as': 'sistema_regalias',
@@ -86,21 +193,26 @@ COLUMN_MAPPING = {
     'tipo_de_cuenta': 'tipo_cuenta',
     'n_mero_de_cuenta': 'numero_cuenta',
     'el_contrato_puede_ser_prorrogado': 'puede_prorrogarse',
-    'nombre_ordenador_del_gasto': 'nombre_ordenador_gasto',
-    'tipo_de_documento_ordenador_del_gasto': 'tipo_doc_ordenador_gasto',
+    'nombre_ordenador_del_gasto': None,  # Removido de la BD
+    'tipo_de_documento_ordenador_del_gasto': None,  # Removido de la BD
     'n_mero_de_documento_ordenador_del_gasto': 'num_doc_ordenador_gasto',
-    'nombre_supervisor': 'nombre_supervisor',
-    'tipo_de_documento_supervisor': 'tipo_doc_supervisor',
+    'nombre_supervisor': None,  # Removido de la BD
+    'tipo_de_documento_supervisor': None,  # Removido de la BD
     'n_mero_de_documento_supervisor': 'num_doc_supervisor',
-    'nombre_ordenador_de_pago': 'nombre_ordenador_pago',
-    'tipo_de_documento_ordenador_de_pago': 'tipo_doc_ordenador_pago',
+    'nombre_ordenador_de_pago': None,  # Removido de la BD
+    'tipo_de_documento_ordenador_de_pago': None,  # Removido de la BD
     'n_mero_de_documento_ordenador_de_pago': 'num_doc_ordenador_pago'
 }
 
-def limpiar_valor(valor):
+def limpiar_valor(valor, campo=None):
     """
     Convierte valores 'No Definido', 'No definido', etc. a None.
     También maneja diccionarios extrayendo valores específicos.
+    Limpia caracteres especiales de campos numéricos específicos.
+    
+    Args:
+        valor: El valor a limpiar
+        campo: Nombre del campo (para aplicar limpieza específica)
     """
     if isinstance(valor, dict):
         # Si es un diccionario, intenta extraer el valor 'url' o devuelve None
@@ -110,6 +222,18 @@ def limpiar_valor(valor):
         valores_nulos = ['no definido', 'no válido', 'sin descripcion', 'sin descripción']
         if valor.strip().lower() in valores_nulos:
             return None
+        
+        # Campos que deben tener limpieza de caracteres especiales
+        campos_numericos = [
+            'nit_entidad',
+            'num_doc_ordenador_gasto',
+            'num_doc_supervisor',
+            'num_doc_ordenador_pago'
+        ]
+        
+        if campo in campos_numericos:
+            # Eliminar puntos, comas y comillas simples
+            valor = valor.replace('.', '').replace(',', '').replace("'", '').replace("-","").strip()
     
     return valor
 
@@ -117,6 +241,7 @@ def limpiar_valor(valor):
 def transformar_nombres_columnas(registro, mapeo=None):
     """
     Transforma los nombres de las columnas según el mapeo proporcionado.
+    Elimina campos que no existen en la nueva estructura de BD (valor None en mapeo).
     
     Args:
         registro (dict): Diccionario con los datos originales
@@ -124,7 +249,7 @@ def transformar_nombres_columnas(registro, mapeo=None):
                     Si es None, usa COLUMN_MAPPING por defecto
     
     Returns:
-        dict: Diccionario con los nombres transformados
+        dict: Diccionario con los nombres transformados y solo campos válidos
     """
     if mapeo is None:
         mapeo = COLUMN_MAPPING
@@ -132,14 +257,20 @@ def transformar_nombres_columnas(registro, mapeo=None):
     registro_transformado = {}
     
     for key_original, valor in registro.items():
-        # Usa el nombre mapeado o el original si no existe en el mapeo
+        # Obtiene el nombre mapeado
         key_nuevo = mapeo.get(key_original, key_original)
-        registro_transformado[key_nuevo] = limpiar_valor(valor)
+        
+        # Si el mapeo es None, significa que ese campo fue removido de la BD
+        if key_nuevo is None:
+            continue
+        
+        # Agrega el campo transformado con limpieza específica por campo
+        registro_transformado[key_nuevo] = limpiar_valor(valor, campo=key_nuevo)
     
     return registro_transformado
 
 
-def guardar_contratos(datos, tabla='contratos', mapeo=None, batch_size=100):
+def guardar_contratos(datos, tabla='contratos', mapeo=None):
     """
     Guarda una lista de contratos en la base de datos.
     
@@ -147,7 +278,6 @@ def guardar_contratos(datos, tabla='contratos', mapeo=None, batch_size=100):
         datos (list): Lista de diccionarios con los datos de contratos
         tabla (str): Nombre de la tabla donde guardar
         mapeo (dict): Mapeo de nombres de columnas (opcional)
-        batch_size (int): Tamaño del lote para inserciones masivas
     
     Returns:
         dict: Estadísticas de la operación (insertados, errores)
@@ -305,8 +435,8 @@ def guardar_adiciones(datos, tabla='adiciones', mapeo=None, actualizar_existente
                     'registro': registro.get('identificador', 'N/A')
                 })
         
-        # Confirmar transacción
-        db.commit()
+        
+        
         
     except Exception as e:
         db.rollback()
@@ -314,67 +444,6 @@ def guardar_adiciones(datos, tabla='adiciones', mapeo=None, actualizar_existente
     
     return stats
 
-
-# def obtener_adiciones_por_contrato(id_contrato, tabla='adiciones'):
-#     """
-#     Obtiene todas las adiciones/modificaciones de un contrato específico.
-    
-#     Args:
-#         id_contrato (str): ID del contrato
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         list: Lista de registros de adiciones
-#     """
-#     adiciones = db(db[tabla].id_contrato == id_contrato).select(
-#         orderby=db[tabla].fecha_registro
-#     )
-#     return adiciones.as_list()
-
-
-# def obtener_adiciones_por_tipo(tipo_modificacion, tabla='adiciones'):
-#     """
-#     Obtiene todas las adiciones/modificaciones de un tipo específico.
-    
-#     Args:
-#         tipo_modificacion (str): Tipo de modificación
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         list: Lista de registros de adiciones
-#     """
-#     adiciones = db(db[tabla].tipo_modificacion == tipo_modificacion).select(
-#         orderby=db[tabla].fecha_registro
-#     )
-#     return adiciones.as_list()
-
-
-# def estadisticas_adiciones(tabla='adiciones'):
-#     """
-#     Genera estadísticas sobre las adiciones en la base de datos.
-    
-#     Args:
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         dict: Diccionario con estadísticas
-#     """
-#     total = db(db[tabla]).count()
-    
-#     # Contar por tipo
-#     tipos = db(db[tabla]).select(
-#         db[tabla].tipo_modificacion,
-#         db[tabla].id_adicion.count(),
-#         groupby=db[tabla].tipo_modificacion
-#     )
-    
-#     tipos_dict = {row[db[tabla]].tipo_modificacion: row[db[tabla].id_adicion.count()] 
-#                   for row in tipos}
-    
-#     return {
-#         'total_adiciones': total,
-#         'por_tipo': tipos_dict
-#     }
 
 # Mapeo de nombres de columnas para ejecuciones (original -> nombre en BD)
 EJECUCIONES_COLUMN_MAPPING = {
@@ -513,571 +582,6 @@ def guardar_ejecuciones(datos, tabla='ejecuciones', mapeo=None, batch_size=100):
     
     return stats
 
-
-# def obtener_ejecuciones_por_contrato(id_contrato, tabla='ejecuciones'):
-#     """
-#     Obtiene todas las ejecuciones de un contrato específico.
-    
-#     Args:
-#         id_contrato (str): ID del contrato
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         list: Lista de registros de ejecuciones
-#     """
-#     ejecuciones = db(db[tabla].id_contrato == id_contrato).select(
-#         orderby=db[tabla].fecha_creacion
-#     )
-#     return ejecuciones.as_list()
-
-
-# def obtener_ejecuciones_por_estado(estado, tabla='ejecuciones'):
-#     """
-#     Obtiene todas las ejecuciones con un estado específico.
-    
-#     Args:
-#         estado (str): Estado del contrato
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         list: Lista de registros de ejecuciones
-#     """
-#     ejecuciones = db(db[tabla].estado_contrato == estado).select(
-#         orderby=db[tabla].fecha_creacion
-#     )
-#     return ejecuciones.as_list()
-
-
-# def obtener_ejecuciones_por_tipo(tipo_ejecucion, tabla='ejecuciones'):
-#     """
-#     Obtiene todas las ejecuciones de un tipo específico.
-    
-#     Args:
-#         tipo_ejecucion (str): Tipo de ejecución (ej: 'PORCENTAJE', 'CANTIDAD')
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         list: Lista de registros de ejecuciones
-#     """
-#     ejecuciones = db(db[tabla].tipo_ejecucion == tipo_ejecucion).select(
-#         orderby=db[tabla].fecha_creacion
-#     )
-#     return ejecuciones.as_list()
-
-
-# def calcular_avance_contrato(id_contrato, tabla='ejecuciones'):
-#     """
-#     Calcula el avance promedio de un contrato basado en sus ejecuciones.
-    
-#     Args:
-#         id_contrato (str): ID del contrato
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         dict: Diccionario con información de avance
-#     """
-#     ejecuciones = db(db[tabla].id_contrato == id_contrato).select()
-    
-#     if not ejecuciones:
-#         return {
-#             'id_contrato': id_contrato,
-#             'total_ejecuciones': 0,
-#             'avance_esperado_promedio': 0,
-#             'avance_real_promedio': 0,
-#             'diferencia': 0
-#         }
-    
-#     avance_esperado = sum(float(e.porcentaje_avance_esperado or 0) for e in ejecuciones)
-#     avance_real = sum(float(e.porcentaje_avance_real or 0) for e in ejecuciones)
-#     total = len(ejecuciones)
-    
-#     return {
-#         'id_contrato': id_contrato,
-#         'total_ejecuciones': total,
-#         'avance_esperado_promedio': avance_esperado / total if total > 0 else 0,
-#         'avance_real_promedio': avance_real / total if total > 0 else 0,
-#         'diferencia': (avance_real - avance_esperado) / total if total > 0 else 0
-#     }
-
-
-# def estadisticas_ejecuciones(tabla='ejecuciones'):
-#     """
-#     Genera estadísticas sobre las ejecuciones en la base de datos.
-    
-#     Args:
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         dict: Diccionario con estadísticas
-#     """
-#     total = db(db[tabla]).count()
-    
-#     # Contar por estado
-#     estados = db(db[tabla]).select(
-#         db[tabla].estado_contrato,
-#         db[tabla].id.count(),
-#         groupby=db[tabla].estado_contrato
-#     )
-    
-#     estados_dict = {row[db[tabla]].estado_contrato: row[db[tabla].id.count()] 
-#                     for row in estados}
-    
-#     # Contar por tipo de ejecución
-#     tipos = db(db[tabla]).select(
-#         db[tabla].tipo_ejecucion,
-#         db[tabla].id.count(),
-#         groupby=db[tabla].tipo_ejecucion
-#     )
-    
-#     tipos_dict = {row[db[tabla]].tipo_ejecucion: row[db[tabla].id.count()] 
-#                   for row in tipos}
-    
-#     return {
-#         'total_ejecuciones': total,
-#         'por_estado': estados_dict,
-#         'por_tipo': tipos_dict
-#     }
-
-
-# def obtener_ejecuciones_atrasadas(tabla='ejecuciones'):
-#     """
-#     Obtiene ejecuciones donde el avance real es menor al esperado.
-    
-#     Args:
-#         tabla (str): Nombre de la tabla
-    
-#     Returns:
-#         list: Lista de ejecuciones atrasadas
-#     """
-#     ejecuciones = db(
-#         (db[tabla].porcentaje_avance_real < db[tabla].porcentaje_avance_esperado) &
-#         (db[tabla].estado_contrato != 'Terminado')
-#     ).select(orderby=~(db[tabla].porcentaje_avance_esperado - db[tabla].porcentaje_avance_real))
-    
-#     return ejecuciones.as_list()
-
-# ============================================================================
-# MAPEOS DE COLUMNAS
-# ============================================================================
-
-ENTIDADES_MAPPING = {
-    'nit_entidad': 'nit_entidad',
-    'nombre_entidad': 'nombre_entidad',
-    'departamento': 'departamento',
-    'ciudad': 'ciudad',
-    'orden': 'orden',
-    'sector': 'sector',
-    'rama': 'rama',
-    'entidad_centralizada': 'entidad_centralizada'
-}
-
-# ============================================================================
-# FUNCIONES DE LIMPIEZA
-# ============================================================================
-
-# def limpiar_valor(valor):
-#     """
-#     Convierte valores 'No Definido', 'No definido', etc. a None.
-#     """
-#     if isinstance(valor, dict):
-#         return valor.get('url') if 'url' in valor else None
-    
-#     if isinstance(valor, str):
-#         valores_nulos = [
-#             'no definido',
-#             'no válido',
-#             'sin descripcion',
-#             'sin descripción',
-#             'n/a',
-#             'na',
-#             'no d'
-#         ]
-#         if valor.strip().lower() in valores_nulos:
-#             return None
-    
-#     return valor
-
-
-def convertir_si_no_a_bool(valor):
-    """
-    Convierte 'Si'/'No' a valores string o None.
-    """
-    if isinstance(valor, str):
-        valor_limpio = valor.strip().lower()
-        if valor_limpio == 'si' or valor_limpio == 'sí':
-            return 'Si'
-        elif valor_limpio == 'no':
-            return 'No'
-    return None
-
-
-# ============================================================================
-# FUNCIONES PARA ENTIDADES
-# ============================================================================
-
-def guardar_entidad(datos_contrato):
-    """
-    Guarda o actualiza una entidad desde los datos de un contrato.
-    
-    Args:
-        datos_contrato (dict): Diccionario con los datos del contrato
-    
-    Returns:
-        dict: Resultado de la operación
-    """
-    resultado = {
-        'exito': False,
-        'accion': None,
-        'mensaje': ''
-    }
-    
-    try:
-        nit = limpiar_valor(datos_contrato.get('nit_entidad'))
-        
-        if not nit:
-            resultado['mensaje'] = 'NIT de entidad no válido'
-            return resultado
-        
-        # Preparar datos de la entidad
-        datos_entidad = {
-            'nit_entidad': nit,
-            'nombre_entidad': limpiar_valor(datos_contrato.get('nombre_entidad')),
-            'departamento': limpiar_valor(datos_contrato.get('departamento')),
-            'ciudad': limpiar_valor(datos_contrato.get('ciudad')),
-            'orden': limpiar_valor(datos_contrato.get('orden')),
-            'sector': limpiar_valor(datos_contrato.get('sector')),
-            'rama': limpiar_valor(datos_contrato.get('rama')),
-            'entidad_centralizada': limpiar_valor(datos_contrato.get('entidad_centralizada'))
-        }
-        
-        # Verificar si la entidad ya existe
-        entidad_existente = db(db.entidades.nit_entidad == nit).select().first()
-        
-        if entidad_existente:
-            # Actualizar solo si hay nuevos datos
-            db(db.entidades.nit_entidad == nit).update(**datos_entidad)
-            resultado['exito'] = True
-            resultado['accion'] = 'actualizado'
-            resultado['mensaje'] = f'Entidad {nit} actualizada'
-        else:
-            # Insertar nueva entidad
-            db.entidades.insert(**datos_entidad)
-            resultado['exito'] = True
-            resultado['accion'] = 'insertado'
-            resultado['mensaje'] = f'Entidad {nit} creada'
-        
-        db.commit()
-        
-    except Exception as e:
-        db.rollback()
-        resultado['mensaje'] = f'Error: {str(e)}'
-    
-    return resultado
-
-
-# ============================================================================
-# FUNCIONES PARA PROVEEDORES Y PERSONAS
-# ============================================================================
-
-def guardar_proveedor_o_persona(documento, nombre, tipo, es_grupo=None, es_pyme=None):
-    """
-    Guarda o actualiza un proveedor o persona.
-    
-    Args:
-        documento (str): Documento de identidad
-        nombre (str): Nombre de la persona/entidad
-        tipo (str): Tipo (proveedor, representante_legal, etc.)
-        es_grupo (str): 'Si' o 'No', opcional
-        es_pyme (str): 'Si' o 'No', opcional
-    
-    Returns:
-        dict: Resultado de la operación
-    """
-    resultado = {
-        'exito': False,
-        'accion': None,
-        'mensaje': ''
-    }
-    
-    try:
-        documento_limpio = limpiar_valor(documento)
-        nombre_limpio = limpiar_valor(nombre)
-        
-        if not documento_limpio:
-            resultado['mensaje'] = 'Documento no válido'
-            return resultado
-        
-        if not nombre_limpio:
-            resultado['mensaje'] = 'Nombre no válido'
-            return resultado
-        
-        # Limpiar es_grupo y es_pyme
-        es_grupo_limpio = convertir_si_no_a_bool(es_grupo) if es_grupo else None
-        es_pyme_limpio = convertir_si_no_a_bool(es_pyme) if es_pyme else None
-        
-        # Verificar si ya existe
-        persona_existente = db(db.proveedoresypersonas.documento == documento_limpio).select().first()
-        
-        if persona_existente:
-            # Verificar si el nuevo nombre es más largo
-            nombre_actual = persona_existente.nombre or ''
-            nombre_nuevo = nombre_limpio
-            
-            actualizar = False
-            datos_actualizacion = {}
-            
-            # Solo actualizar nombre si el nuevo es más largo
-            if len(nombre_nuevo) > len(nombre_actual):
-                datos_actualizacion['nombre'] = nombre_nuevo
-                actualizar = True
-            
-            # Actualizar es_grupo si se proporciona y no existe
-            if es_grupo_limpio and not persona_existente.es_grupo:
-                datos_actualizacion['es_grupo'] = es_grupo_limpio
-                actualizar = True
-            
-            # Actualizar es_pyme si se proporciona y no existe
-            if es_pyme_limpio and not persona_existente.es_pyme:
-                datos_actualizacion['es_pyme'] = es_pyme_limpio
-                actualizar = True
-            
-            # Actualizar tipo si no existe o agregar el nuevo tipo
-            if tipo and tipo not in (persona_existente.tipo or ''):
-                tipo_actual = persona_existente.tipo or ''
-                if tipo_actual:
-                    datos_actualizacion['tipo'] = f"{tipo_actual},{tipo}"
-                else:
-                    datos_actualizacion['tipo'] = tipo
-                actualizar = True
-            
-            if actualizar:
-                db(db.proveedoresypersonas.documento == documento_limpio).update(**datos_actualizacion)
-                resultado['exito'] = True
-                resultado['accion'] = 'actualizado'
-                resultado['mensaje'] = f'Persona {documento_limpio} actualizada'
-            else:
-                resultado['exito'] = True
-                resultado['accion'] = 'sin_cambios'
-                resultado['mensaje'] = f'Persona {documento_limpio} sin cambios necesarios'
-        else:
-            # Insertar nueva persona
-            db.proveedoresypersonas.insert(
-                documento=documento_limpio,
-                nombre=nombre_limpio,
-                es_grupo=es_grupo_limpio,
-                es_pyme=es_pyme_limpio,
-                tipo=tipo
-            )
-            resultado['exito'] = True
-            resultado['accion'] = 'insertado'
-            resultado['mensaje'] = f'Persona {documento_limpio} creada'
-        
-        db.commit()
-        
-    except Exception as e:
-        db.rollback()
-        resultado['mensaje'] = f'Error: {str(e)}'
-    
-    return resultado
-
-
-def procesar_personas_del_contrato(datos_contrato):
-    """
-    Procesa y guarda todas las personas relacionadas con un contrato.
-    
-    Args:
-        datos_contrato (dict): Diccionario con los datos del contrato
-    
-    Returns:
-        dict: Resultados de todas las operaciones
-    """
-    resultados = {
-        'proveedor': None,
-        'representante_legal': None,
-        'ordenador_gasto': None,
-        'supervisor': None,
-        'ordenador_pago': None
-    }
-    
-    # Proveedor
-    doc_proveedor = datos_contrato.get('documento_proveedor')
-    nombre_proveedor = datos_contrato.get('proveedor_adjudicado')
-    es_grupo = datos_contrato.get('es_grupo')
-    es_pyme = datos_contrato.get('es_pyme')
-    
-    if doc_proveedor and nombre_proveedor:
-        resultados['proveedor'] = guardar_proveedor_o_persona(
-            doc_proveedor,
-            nombre_proveedor,
-            'proveedor',
-            es_grupo,
-            es_pyme
-        )
-    
-    # Representante legal
-    doc_repr = datos_contrato.get('identificaci_n_representante_legal')
-    nombre_repr = datos_contrato.get('nombre_representante_legal')
-    
-    if doc_repr and nombre_repr:
-        resultados['representante_legal'] = guardar_proveedor_o_persona(
-            doc_repr,
-            nombre_repr,
-            'representante_legal'
-        )
-    
-    # Ordenador del gasto
-    doc_ord_gasto = datos_contrato.get('n_mero_de_documento_ordenador_del_gasto')
-    nombre_ord_gasto = datos_contrato.get('nombre_ordenador_del_gasto')
-    
-    if doc_ord_gasto and nombre_ord_gasto:
-        resultados['ordenador_gasto'] = guardar_proveedor_o_persona(
-            doc_ord_gasto,
-            nombre_ord_gasto,
-            'ordenador_del_gasto'
-        )
-    
-    # Supervisor
-    doc_supervisor = datos_contrato.get('n_mero_de_documento_supervisor')
-    nombre_supervisor = datos_contrato.get('nombre_supervisor')
-    
-    if doc_supervisor and nombre_supervisor:
-        resultados['supervisor'] = guardar_proveedor_o_persona(
-            doc_supervisor,
-            nombre_supervisor,
-            'supervisor'
-        )
-    
-    # Ordenador de pago
-    doc_ord_pago = datos_contrato.get('n_mero_de_documento_ordenador_de_pago')
-    nombre_ord_pago = datos_contrato.get('nombre_ordenador_de_pago')
-    
-    if doc_ord_pago and nombre_ord_pago:
-        resultados['ordenador_pago'] = guardar_proveedor_o_persona(
-            doc_ord_pago,
-            nombre_ord_pago,
-            'ordenador_de_pago'
-        )
-    
-    return resultados
-
-
-# ============================================================================
-# FUNCIÓN PRINCIPAL DE PROCESAMIENTO
-# ============================================================================
-
-def procesar_contrato_completo(datos_contrato):
-    """
-    Procesa un contrato completo: entidad, proveedores y personas.
-    
-    Args:
-        datos_contrato (dict): Diccionario con todos los datos del contrato
-    
-    Returns:
-        dict: Resumen de todas las operaciones
-    """
-    resumen = {
-        'entidad': None,
-        'personas': None
-    }
-    
-    # Guardar entidad
-    resumen['entidad'] = guardar_entidad(datos_contrato)
-    
-    # Guardar personas
-    resumen['personas'] = procesar_personas_del_contrato(datos_contrato)
-    
-    return resumen
-
-
-
-
-
-# ============================================================================
-# FUNCIONES DE CONSULTA
-# ============================================================================
-
-# def obtener_entidad(nit):
-#     """Obtiene una entidad por su NIT."""
-#     return db(db.entidades.nit_entidad == nit).select().first()
-
-
-# def obtener_persona(documento):
-#     """Obtiene una persona por su documento."""
-#     return db(db.proveedoresypersonas.documento == documento).select().first()
-
-
-# def obtener_personas_por_tipo(tipo):
-#     """Obtiene todas las personas de un tipo específico."""
-#     return db(db.proveedoresypersonas.tipo.contains(tipo)).select()
-
-
-# def estadisticas_entidades():
-#     """Genera estadísticas de entidades."""
-#     total = db(db.entidades).count()
-    
-#     por_sector = db(db.entidades).select(
-#         db.entidades.sector,
-#         db.entidades.nit_entidad.count(),
-#         groupby=db.entidades.sector
-#     )
-    
-#     return {
-#         'total': total,
-#         'por_sector': {row[db.entidades].sector: row[db.entidades.nit_entidad.count()] 
-#                     for row in por_sector if row[db.entidades].sector}
-#     }
-
-
-# def estadisticas_personas():
-#     """Genera estadísticas de personas."""
-#     total = db(db.proveedoresypersonas).count()
-    
-#     proveedores = db(db.proveedoresypersonas.tipo.contains('proveedor')).count()
-#     representantes = db(db.proveedoresypersonas.tipo.contains('representante_legal')).count()
-#     supervisores = db(db.proveedoresypersonas.tipo.contains('supervisor')).count()
-    
-#     return {
-#         'total': total,
-#         'proveedores': proveedores,
-#         'representantes_legales': representantes,
-#         'supervisores': supervisores
-#     }
-
-
-
-
-
-
-
-# ============================================================================
-# FUNCIONES DE LIMPIEZA Y NORMALIZACIÓN
-# ============================================================================
-
-# def limpiar_valor(valor):
-#     """
-#     Convierte valores 'No Definido', vacíos, etc. a None.
-#     """
-#     if isinstance(valor, str):
-#         valor_limpio = valor.strip()
-        
-#         valores_nulos = [
-#             'no definido',
-#             'no válido',
-#             'sin descripcion',
-#             'sin descripción',
-#             'n/a',
-#             'na',
-#             ''
-#         ]
-        
-#         if valor_limpio.lower() in valores_nulos or not valor_limpio:
-#             return None
-        
-#         return valor_limpio
-    
-#     return valor
-
-
 def normalizar_documento(documento):
     """
     Normaliza un documento eliminando espacios y caracteres innecesarios.
@@ -1150,7 +654,7 @@ def extraer_datos_siri(datos_siri):
         'segundo_nombre': segundo_nombre,
         'primer_apellido': primer_apellido,
         'segundo_apellido': segundo_apellido,
-        'nombre_completo': None,
+        'nombre_completo': " ".join([primer_nombre,segundo_nombre,primer_apellido,segundo_apellido]),
         'sancion': limpiar_valor(datos_siri.get('sanciones')),
         'fecha_efectos_juridicos': parsear_fecha(datos_siri.get('fecha_efectos_juridicos')),
         'numero_resolucion': None,
@@ -1435,89 +939,508 @@ def procesar_multiples_secop(lista_secop):
     
     return stats
 
+def limpiar_documento(documento):
+    """
+    Limpia el documento removiendo puntos, comas y comillas.
+    """
+    if isinstance(documento, str):
+        return documento.replace('.', '').replace(',', '').replace("'", '').strip()
+    return documento
 
-# ============================================================================
-# FUNCIONES DE CONSULTA
-# ============================================================================
 
-# def obtener_sanciones_por_documento(documento):
-#     """
-#     Obtiene todas las sanciones de un documento.
+def normalizar_valor_boolean(valor):
+    """
+    Convierte valores como 'Sí', 'No', 'Si' a 'Sí' o 'No' estandarizado.
+    """
+    if isinstance(valor, str):
+        valor_lower = valor.lower().strip()
+        if valor_lower in ['sí', 'si', 's', 'yes', 'y']:
+            return 'Sí'
+        elif valor_lower in ['no', 'n']:
+            return 'No'
+    return valor
+
+
+def guardar_entidad_persona(datos):
+    """
+    Guarda o actualiza una entidad en la tabla entidades_personas.
     
-#     Args:
-#         documento (str): Número de documento
+    Args:
+        datos (dict): Diccionario con los datos del JSON
+        
+    Returns:
+        dict: Información sobre la operación realizada
+    """
+    resultado = {
+        'operacion': None,
+        'documento': None,
+        'error': None
+    }
     
-#     Returns:
-#         list: Lista de sanciones
-#     """
-#     doc_normalizado = normalizar_documento(documento)
-#     return db(db.sancionados.documento == doc_normalizado).select(
-#         orderby=db.sancionados.fecha_efectos_juridicos
-#     ).as_list()
-
-
-# def obtener_sancionados_por_tipo(tipo_inhabilitacion):
-#     """
-#     Obtiene sancionados por tipo de inhabilitación.
+    try:
+        # Extraer y procesar datos de la entidad
+        nit = limpiar_documento(datos.get('nit_entidad', ''))
+        
+        if not nit:
+            resultado['error'] = 'NIT de entidad no proporcionado'
+            return resultado
+        
+        # Preparar datos de la entidad
+        datos_entidad = {
+            'documento': nit,
+            'tipo_documento': 'NIT',
+            'nombre': datos.get('nombre_entidad'),
+            'departamento': datos.get('departamento'),
+            'ciudad': datos.get('ciudad'),
+            'orden': datos.get('orden'),
+            'sector': datos.get('sector'),
+            'rama': datos.get('rama'),
+            'entidad_centralizada': datos.get('entidad_centralizada'),
+            'es_grupo': None,
+            'es_pyme': None,
+            'es_entidad': 'Sí',
+            'es_proveedor': None,
+            'es_representante_legal': None,
+            'es_ordenador_del_gasto': None,
+            'es_supervisor': None
+        }
+        
+        # Buscar si ya existe la entidad
+        registro_existente = db(db.entidades_personas.documento == nit).select().first()
+        
+        if registro_existente:
+            # Actualizar solo los campos booleanos si están vacíos
+            campos_a_actualizar = {}
+            
+            if not registro_existente.es_entidad or registro_existente.es_entidad == 'No':
+                campos_a_actualizar['es_entidad'] = 'Sí'
+            
+            if campos_a_actualizar:
+                registro_existente.update_record(**campos_a_actualizar)
+                resultado['operacion'] = 'actualizado'
+            else:
+                resultado['operacion'] = 'sin_cambios'
+        else:
+            # Insertar nuevo registro
+            db.entidades_personas.insert(**datos_entidad)
+            resultado['operacion'] = 'insertado'
+        
+        resultado['documento'] = nit
+        
+    except Exception as e:
+        resultado['error'] = str(e)
     
-#     Args:
-#         tipo_inhabilitacion (str): Tipo de inhabilitación
+    return resultado
+
+
+def guardar_proveedor(datos):
+    """
+    Guarda o actualiza un proveedor en la tabla entidades_personas.
     
-#     Returns:
-#         list: Lista de sancionados
-#     """
-#     return db(db.sancionados.tipo_inhabilitacion == tipo_inhabilitacion).select(
-#         orderby=db.sancionados.fecha_efectos_juridicos
-#     ).as_list()
-
-
-# def obtener_sancionados_por_origen(origen):
-#     """
-#     Obtiene sancionados por origen (SIRI o SECOP).
+    Args:
+        datos (dict): Diccionario con los datos del JSON
+        
+    Returns:
+        dict: Información sobre la operación realizada
+    """
+    resultado = {
+        'operacion': None,
+        'documento': None,
+        'error': None
+    }
     
-#     Args:
-#         origen (str): 'SIRI' o 'SECOP'
+    try:
+        # Extraer y procesar datos del proveedor
+        doc_proveedor = limpiar_documento(datos.get('documento_proveedor', ''))
+        
+        if not doc_proveedor:
+            resultado['error'] = 'Documento de proveedor no proporcionado'
+            return resultado
+        
+        tipo_doc = datos.get('tipodocproveedor', 'Cédula de Ciudadanía')
+        nombre = datos.get('proveedor_adjudicado')
+        es_grupo = normalizar_valor_boolean(datos.get('es_grupo', 'No'))
+        es_pyme = normalizar_valor_boolean(datos.get('es_pyme', 'No'))
+        
+        # Preparar datos del proveedor
+        datos_proveedor = {
+            'documento': doc_proveedor,
+            'tipo_documento': tipo_doc,
+            'nombre': nombre,
+            'es_grupo': es_grupo,
+            'es_pyme': es_pyme,
+            'es_entidad': None,
+            'es_proveedor': 'Sí',
+            'es_representante_legal': None,
+            'es_ordenador_del_gasto': None,
+            'es_supervisor': None
+        }
+        
+        # Buscar si ya existe el proveedor
+        registro_existente = db(db.entidades_personas.documento == doc_proveedor).select().first()
+        
+        if registro_existente:
+            # Actualizar solo los campos booleanos si están vacíos
+            campos_a_actualizar = {}
+            
+            if not registro_existente.es_proveedor or registro_existente.es_proveedor == 'No':
+                campos_a_actualizar['es_proveedor'] = 'Sí'
+            
+            if not registro_existente.es_grupo:
+                campos_a_actualizar['es_grupo'] = es_grupo
+            
+            if not registro_existente.es_pyme:
+                campos_a_actualizar['es_pyme'] = es_pyme
+            
+            if campos_a_actualizar:
+                registro_existente.update_record(**campos_a_actualizar)
+                resultado['operacion'] = 'actualizado'
+            else:
+                resultado['operacion'] = 'sin_cambios'
+        else:
+            # Insertar nuevo registro
+            db.entidades_personas.insert(**datos_proveedor)
+            resultado['operacion'] = 'insertado'
+        
+        resultado['documento'] = doc_proveedor
+        
+    except Exception as e:
+        resultado['error'] = str(e)
     
-#     Returns:
-#         list: Lista de sancionados
-#     """
-#     return db(db.sancionados.origen == origen).select(
-#         orderby=db.sancionados.fecha_efectos_juridicos
-#     ).as_list()
+    return resultado
 
 
-# def estadisticas_sancionados():
-#     """
-#     Genera estadísticas de sancionados.
+def guardar_representante_legal(datos):
+    """
+    Guarda o actualiza un representante legal en la tabla entidades_personas.
     
-#     Returns:
-#         dict: Diccionario con estadísticas
-#     """
-#     total = db(db.sancionados).count()
+    Args:
+        datos (dict): Diccionario con los datos del JSON
+        
+    Returns:
+        dict: Información sobre la operación realizada
+    """
+    resultado = {
+        'operacion': None,
+        'documento': None,
+        'error': None
+    }
     
-#     por_tipo = db(db.sancionados).select(
-#         db.sancionados.tipo_inhabilitacion,
-#         db.sancionados.id.count(),
-#         groupby=db.sancionados.tipo_inhabilitacion
-#     )
+    try:
+        # Extraer y procesar datos del representante legal
+        doc_rep = limpiar_documento(datos.get('identificaci_n_representante_legal', ''))
+        
+        if not doc_rep or doc_rep.lower() in ['sin descripcion', 'no definido']:
+            resultado['error'] = 'Documento de representante legal no válido'
+            return resultado
+        
+        tipo_doc = datos.get('tipo_de_identificaci_n_representante_legal', 'Cédula de Ciudadanía')
+        nombre = datos.get('nombre_representante_legal')
+        nacionalidad = datos.get('nacionalidad_representante_legal')
+        genero = datos.get('g_nero_representante_legal')
+        domicilio = datos.get('domicilio_representante_legal')
+        
+        # Preparar datos del representante legal
+        datos_representante = {
+            'documento': doc_rep,
+            'tipo_documento': tipo_doc,
+            'nombre': nombre,
+            'nacionalidad': nacionalidad,
+            'genero': genero,
+            'domicilio': domicilio,
+            'es_grupo': None,
+            'es_pyme': None,
+            'es_entidad': None,
+            'es_proveedor': None,
+            'es_representante_legal': 'Sí',
+            'es_ordenador_del_gasto': None,
+            'es_supervisor': None
+        }
+        
+        # Buscar si ya existe el representante
+        registro_existente = db(db.entidades_personas.documento == doc_rep).select().first()
+        
+        if registro_existente:
+            # Actualizar solo el campo booleano si está vacío
+            campos_a_actualizar = {}
+            
+            if not registro_existente.es_representante_legal or registro_existente.es_representante_legal == 'No':
+                campos_a_actualizar['es_representante_legal'] = 'Sí'
+            
+            if campos_a_actualizar:
+                registro_existente.update_record(**campos_a_actualizar)
+                resultado['operacion'] = 'actualizado'
+            else:
+                resultado['operacion'] = 'sin_cambios'
+        else:
+            # Insertar nuevo registro
+            db.entidades_personas.insert(**datos_representante)
+            resultado['operacion'] = 'insertado'
+        
+        resultado['documento'] = doc_rep
+        
+    except Exception as e:
+        resultado['error'] = str(e)
     
-#     por_origen = db(db.sancionados).select(
-#         db.sancionados.origen,
-#         db.sancionados.id.count(),
-#         groupby=db.sancionados.origen
-#     )
+    return resultado
+
+
+def guardar_ordenador_gasto(datos):
+    """
+    Guarda o actualiza un ordenador del gasto en la tabla entidades_personas.
     
-#     return {
-#         'total': total,
-#         'por_tipo': {row[db.sancionados].tipo_inhabilitacion: row[db.sancionados.id.count()] 
-#                      for row in por_tipo if row[db.sancionados].tipo_inhabilitacion},
-#         'por_origen': {row[db.sancionados].origen: row[db.sancionados.id.count()] 
-#                        for row in por_origen if row[db.sancionados].origen}
-#     }
+    Args:
+        datos (dict): Diccionario con los datos del JSON
+        
+    Returns:
+        dict: Información sobre la operación realizada
+    """
+    resultado = {
+        'operacion': None,
+        'documento': None,
+        'error': None
+    }
+    
+    try:
+        # Extraer y procesar datos del ordenador del gasto
+        doc_ordenador = limpiar_documento(datos.get('n_mero_de_documento_ordenador_del_gasto', ''))
+        
+        if not doc_ordenador:
+            resultado['error'] = 'Documento de ordenador del gasto no proporcionado'
+            return resultado
+        
+        tipo_doc = datos.get('tipo_de_documento_ordenador_del_gasto', 'Cédula de Ciudadanía')
+        nombre = datos.get('nombre_ordenador_del_gasto')
+        
+        # Preparar datos del ordenador del gasto
+        datos_ordenador = {
+            'documento': doc_ordenador,
+            'tipo_documento': tipo_doc,
+            'nombre': nombre,
+            'es_grupo': None,
+            'es_pyme': None,
+            'es_entidad': None,
+            'es_proveedor': None,
+            'es_representante_legal': None,
+            'es_ordenador_del_gasto': 'Sí',
+            'es_supervisor': None
+        }
+        
+        # Buscar si ya existe el ordenador
+        registro_existente = db(db.entidades_personas.documento == doc_ordenador).select().first()
+        
+        if registro_existente:
+            # Actualizar solo el campo booleano si está vacío
+            campos_a_actualizar = {}
+            
+            if not registro_existente.es_ordenador_del_gasto or registro_existente.es_ordenador_del_gasto == 'No':
+                campos_a_actualizar['es_ordenador_del_gasto'] = 'Sí'
+            
+            if campos_a_actualizar:
+                registro_existente.update_record(**campos_a_actualizar)
+                resultado['operacion'] = 'actualizado'
+            else:
+                resultado['operacion'] = 'sin_cambios'
+        else:
+            # Insertar nuevo registro
+            db.entidades_personas.insert(**datos_ordenador)
+            resultado['operacion'] = 'insertado'
+        
+        resultado['documento'] = doc_ordenador
+        
+    except Exception as e:
+        resultado['error'] = str(e)
+    
+    return resultado
 
 
+def guardar_supervisor(datos):
+    """
+    Guarda o actualiza un supervisor en la tabla entidades_personas.
+    
+    Args:
+        datos (dict): Diccionario con los datos del JSON
+        
+    Returns:
+        dict: Información sobre la operación realizada
+    """
+    resultado = {
+        'operacion': None,
+        'documento': None,
+        'error': None
+    }
+    
+    try:
+        # Extraer y procesar datos del supervisor
+        doc_supervisor = limpiar_documento(datos.get('n_mero_de_documento_supervisor', ''))
+        
+        if not doc_supervisor:
+            resultado['error'] = 'Documento de supervisor no proporcionado'
+            return resultado
+        
+        tipo_doc = datos.get('tipo_de_documento_supervisor', 'Cédula de Ciudadanía')
+        nombre = datos.get('nombre_supervisor')
+        
+        # Preparar datos del supervisor
+        datos_supervisor = {
+            'documento': doc_supervisor,
+            'tipo_documento': tipo_doc,
+            'nombre': nombre,
+            'es_grupo': None,
+            'es_pyme': None,
+            'es_entidad': None,
+            'es_proveedor': None,
+            'es_representante_legal': None,
+            'es_ordenador_del_gasto': None,
+            'es_supervisor': 'Sí'
+        }
+        
+        # Buscar si ya existe el supervisor
+        registro_existente = db(db.entidades_personas.documento == doc_supervisor).select().first()
+        
+        if registro_existente:
+            # Actualizar solo el campo booleano si está vacío
+            campos_a_actualizar = {}
+            
+            if not registro_existente.es_supervisor or registro_existente.es_supervisor == 'No':
+                campos_a_actualizar['es_supervisor'] = 'Sí'
+            
+            if campos_a_actualizar:
+                registro_existente.update_record(**campos_a_actualizar)
+                resultado['operacion'] = 'actualizado'
+            else:
+                resultado['operacion'] = 'sin_cambios'
+        else:
+            # Insertar nuevo registro
+            db.entidades_personas.insert(**datos_supervisor)
+            resultado['operacion'] = 'insertado'
+        
+        resultado['documento'] = doc_supervisor
+        
+    except Exception as e:
+        resultado['error'] = str(e)
+    
+    return resultado
 
 
+def guardar_ordenador_pago(datos):
+    """
+    Guarda o actualiza un ordenador de pago en la tabla entidades_personas.
+    Nota: Se almacena como supervisor ya que no hay campo específico.
+    
+    Args:
+        datos (dict): Diccionario con los datos del JSON
+        
+    Returns:
+        dict: Información sobre la operación realizada
+    """
+    resultado = {
+        'operacion': None,
+        'documento': None,
+        'error': None
+    }
+    
+    try:
+        # Extraer y procesar datos del ordenador de pago
+        doc_ordenador_pago = limpiar_documento(datos.get('n_mero_de_documento_ordenador_de_pago', ''))
+        
+        if not doc_ordenador_pago:
+            resultado['error'] = 'Documento de ordenador de pago no proporcionado'
+            return resultado
+        
+        tipo_doc = datos.get('tipo_de_documento_ordenador_de_pago', 'Cédula de Ciudadanía')
+        nombre = datos.get('nombre_ordenador_de_pago')
+        
+        # Preparar datos del ordenador de pago (como supervisor)
+        datos_ordenador_pago = {
+            'documento': doc_ordenador_pago,
+            'tipo_documento': tipo_doc,
+            'nombre': nombre,
+            'es_grupo': None,
+            'es_pyme': None,
+            'es_entidad': None,
+            'es_proveedor': None,
+            'es_representante_legal': None,
+            'es_ordenador_del_gasto': None,
+            'es_supervisor': 'Sí'
+        }
+        
+        # Buscar si ya existe
+        registro_existente = db(db.entidades_personas.documento == doc_ordenador_pago).select().first()
+        
+        if registro_existente:
+            # Actualizar solo el campo booleano si está vacío
+            campos_a_actualizar = {}
+            
+            if not registro_existente.es_supervisor or registro_existente.es_supervisor == 'No':
+                campos_a_actualizar['es_supervisor'] = 'Sí'
+            
+            if campos_a_actualizar:
+                registro_existente.update_record(**campos_a_actualizar)
+                resultado['operacion'] = 'actualizado'
+            else:
+                resultado['operacion'] = 'sin_cambios'
+        else:
+            # Insertar nuevo registro
+            db.entidades_personas.insert(**datos_ordenador_pago)
+            resultado['operacion'] = 'insertado'
+        
+        resultado['documento'] = doc_ordenador_pago
+        
+    except Exception as e:
+        resultado['error'] = str(e)
+    
+    return resultado
+
+
+def procesar_entidades_personas_desde_contrato(datos):
+    """
+    Procesa todos los roles (entidad, proveedor, representante, etc.) 
+    desde un registro de contrato y los guarda en la base de datos.
+    
+    Args:
+        datos (dict): Diccionario con los datos del JSON del contrato
+        
+    Returns:
+        dict: Estadísticas de la operación
+    """
+    stats = {
+        'entidad': None,
+        'proveedor': None,
+        'representante_legal': None,
+        'ordenador_gasto': None,
+        'supervisor': None,
+        'ordenador_pago': None,
+        'errores': []
+    }
+    
+    try:
+        # Guardar entidad
+        stats['entidad'] = guardar_entidad_persona(datos)
+        
+        # Guardar proveedor
+        stats['proveedor'] = guardar_proveedor(datos)
+        
+        # Guardar representante legal
+        stats['representante_legal'] = guardar_representante_legal(datos)
+        
+        # Guardar ordenador del gasto
+        stats['ordenador_gasto'] = guardar_ordenador_gasto(datos)
+        
+        # Guardar supervisor
+        stats['supervisor'] = guardar_supervisor(datos)
+        
+        # Guardar ordenador de pago
+        stats['ordenador_pago'] = guardar_ordenador_pago(datos)
+        
+        # Confirmar transacción
+        db.commit()
+        
+    except Exception as e:
+        db.rollback()
+        stats['errores'].append(str(e))
+    
+    return stats
 
 
 
@@ -1541,61 +1464,78 @@ client = Socrata("www.datos.gov.co", claveApiSocrata)
 SancionesSecopI="4n4q-k399"
 AntededentesSiri="iaeu-rcn6"
 ContratosSecopII="jbjy-vk9h"#https://www.datos.gov.co/Estad-sticas-Nacionales/SECOP-II-Contratos-Electr-nicos/jbjy-vk9h/about_data
+
 AdicionesSecopII="cb9c-h8sn"#https://www.datos.gov.co/Estad-sticas-Nacionales/SECOP-II-Adiciones/cb9c-h8sn/about_data
 EjecucionesSecopII="mfmm-jqmq"#https://www.datos.gov.co/Estad-sticas-Nacionales/SECOP-II-Ejecuci-n-Contratos/mfmm-jqmq/data_preview
-t=0
 
-reloj=time.time()
-# for item in client.get_all(SancionesSecopI):
-#     guardar_amonestado_secop(item)
-#     t+=1
-#     if t % 500 == 0:
-#         db.commit()
-    
-# print(time.time()-reloj)
-# for item in client.get_all(AntededentesSiri):
-#     guardar_sancionado_siri(item)
-#     if t % 500 == 0:
-#         db.commit()
-#     t+=1
-# print(time.time()-reloj)
+equivalenciadb={
+    "CONTRATOS":ContratosSecopII,
+    "ADICIONES":AdicionesSecopII,
+    "EJECUCIONES":EjecucionesSecopII,
+    "AMONESTADOS SECOPI":SancionesSecopI,
+    "SANCIONADOS SIRI":AntededentesSiri
+}
 
-for item in client.get_all(ContratosSecopII):
-    if db(db["contratos"].id_contrato == item["id_contrato"]).select():
-        continue
-    n=guardar_contratos([item])
-    p=procesar_contrato_completo(item)
-    t+=1
-    if t % 50==0:
-        print(t,n,p)
-    
-print(time.time()-reloj)
-contratosindb = db(db.contratos).select(
-        db.contratos.id_contrato,
-        distinct=True
-    )
-contractsindb=[c.id_contrato for c in contratosindb]
-
-for contracindb in contractsindb:
-    for item in client.get(AdicionesSecopII ,where="id_contrato == '%s'"%(contracindb)):
+def load_data_socrata(source="CONTRATOS",max_sample=None,n2save=5000):
+    id_dataset=equivalenciadb[source]
+    t=0
+    total=int(client.get_metadata(id_dataset, content_type="json")['columns'][0]['cachedContents']['non_null'])
+    print(f"Son {total} {source}")
+    reloj=time.time()
+    for item in client.get_all(id_dataset):
         t+=1
-        n=guardar_adiciones([item], actualizar_existentes=True)
-        if t % 500 == 0:
-            print(n)
-            print("Adiciones ",len(contractsindb),t)
-            
-    
-print(time.time()-reloj)
-for contracindb in contractsindb:
-    for item in client.get(EjecucionesSecopII ,where="identificadorcontrato == '%s'"%(contracindb)):
-        t+=1
-        n=guardar_ejecuciones([item])
+        #if db(db["contratos"].id_contrato == item["id_contrato"]).select():
+            #continue
+        print(item)
+        if source =="CONTRATOS":
+            guardar_contratos([item])
+            procesar_entidades_personas_desde_contrato(item)
+        elif source == "ADICIONES":
+            guardar_adiciones([item], actualizar_existentes=True)
+        elif source == "EJECUCIONES":
+            guardar_ejecuciones([item])
+        elif source=="AMONESTADOS SECOPI":
+            guardar_amonestado_secop(item)
+        elif source=="SANCIONADOS SIRI":
+            guardar_sancionado_siri(item)
+        else:
+            raise InvalidInputError("No valided option")
+        
+        
+        if t % n2save==0:
+            db.commit()
+            procesados=t
+            tiempo_transcurrido=time.time()-reloj
+            resultado = estimar_tiempo_restante(total, t, tiempo_transcurrido)
+            print(f"\nTotal a procesar: {total}")
+            print(f"Procesados: {procesados}")
+            print(f"Tiempo transcurrido: {tiempo_transcurrido} segundos")
+            print(f"--- ESTIMACIÓN ---")
+            print(f"Velocidad: {resultado['velocidad']:.2f} elementos/segundo")
+            print(f"Porcentaje completado: {resultado['porcentaje_completado']:.2f}%")
+            print(f"Tiempo restante: {formatear_tiempo(resultado['segundos_restantes'])}")
+            print(f"Segundos restantes: {resultado['segundos_restantes']:.2f}")
+            print(f"Hora estimada de finalización: {resultado['fecha_hora_fin'].strftime('%Y-%m-%d %H:%M:%S')}")
+        if max_sample:
+            if t % max_sample == 0:
+                break
+    db.commit()
 
-        if t % 500 == 0:
-            print(n)
-            print("Ejecuciones ",len(contractsindb),t)
-            
-    
-print(time.time()-reloj)
 
+
+
+
+
+
+
+
+
+
+
+
+load_data_socrata(source="CONTRATOS")
+load_data_socrata(source="ADICIONES")
+load_data_socrata(source="EJECUCIONES")
+load_data_socrata(source="AMONESTADOS SECOPI")
+load_data_socrata(source="SANCIONADOS SIRI")
 

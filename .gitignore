@@ -1,3 +1,5 @@
 private/experiment_config.json
 __pycache__/*
 models/__pycache__/*
+databaseUpgradeold.py
+databasesVieja/*
