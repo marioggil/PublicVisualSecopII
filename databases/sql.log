@@ -1,33 +1,21 @@
-timestamp: 2025-11-28T00:39:35.817256
+timestamp: 2025-12-02T07:40:58.265610
 CREATE TABLE "contratos"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
-    "nombre_entidad" CHAR(512),
-    "nit_entidad" CHAR(512),
-    "departamento" CHAR(512),
-    "ciudad" CHAR(512),
-    "localizacion" CHAR(512),
-    "orden" CHAR(512),
-    "sector" CHAR(512),
-    "rama" CHAR(512),
-    "entidad_centralizada" CHAR(512),
-    "proceso_compra" CHAR(512),
     "id_contrato" CHAR(512),
+    "proceso_compra" CHAR(512),
+    "nit_entidad" CHAR(512),
     "referencia_contrato" CHAR(512),
     "estado_contrato" CHAR(512),
-    "codigo_categoria_principal" CHAR(512),
-    "descripcion_proceso" TEXT,
     "tipo_contrato" CHAR(512),
     "modalidad_contratacion" CHAR(512),
     "justificacion_modalidad" CHAR(512),
+    "codigo_categoria_principal" CHAR(512),
+    "descripcion_proceso" TEXT,
     "fecha_firma" TIMESTAMP,
     "fecha_inicio" TIMESTAMP,
     "fecha_fin" TIMESTAMP,
     "condiciones_entrega" CHAR(512),
-    "tipo_doc_proveedor" CHAR(512),
     "documento_proveedor" CHAR(512),
-    "proveedor_adjudicado" CHAR(512),
-    "es_grupo" CHAR(512),
-    "es_pyme" CHAR(512),
     "habilita_pago_adelantado" CHAR(512),
     "liquidacion" CHAR(512),
     "obligacion_ambiental" CHAR(512),
@@ -53,12 +41,7 @@ CREATE TABLE "contratos"(
     "puntos_acuerdo" CHAR(512),
     "pilares_acuerdo" CHAR(512),
     "url_proceso" CHAR(512),
-    "nombre_representante_legal" CHAR(512),
-    "nacionalidad_representante_legal" CHAR(512),
-    "domicilio_representante_legal" CHAR(512),
-    "tipo_identificacion_representante_legal" CHAR(512),
     "identificacion_representante_legal" CHAR(512),
-    "genero_representante_legal" CHAR(512),
     "presupuesto_pgn" DOUBLE,
     "sistema_participaciones" DOUBLE,
     "sistema_regalias" DOUBLE,
@@ -76,18 +59,12 @@ CREATE TABLE "contratos"(
     "tipo_cuenta" CHAR(512),
     "numero_cuenta" CHAR(512),
     "puede_prorrogarse" CHAR(512),
-    "nombre_ordenador_gasto" CHAR(512),
-    "tipo_doc_ordenador_gasto" CHAR(512),
     "num_doc_ordenador_gasto" CHAR(512),
-    "nombre_supervisor" CHAR(512),
-    "tipo_doc_supervisor" CHAR(512),
     "num_doc_supervisor" CHAR(512),
-    "nombre_ordenador_pago" CHAR(512),
-    "tipo_doc_ordenador_pago" CHAR(512),
     "num_doc_ordenador_pago" CHAR(512)
 );
 success!
-timestamp: 2025-11-28T00:39:35.822315
+timestamp: 2025-12-02T07:40:58.274577
 CREATE TABLE "adiciones"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "id_adicion" CHAR(512) UNIQUE,
@@ -97,7 +74,7 @@ CREATE TABLE "adiciones"(
     "fecha_registro" TIMESTAMP
 );
 success!
-timestamp: 2025-11-28T00:39:35.827019
+timestamp: 2025-12-02T07:40:58.280998
 CREATE TABLE "ejecuciones"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "id_contrato" CHAR(512),
@@ -118,38 +95,35 @@ CREATE TABLE "ejecuciones"(
     "fecha_creacion" TIMESTAMP
 );
 success!
-timestamp: 2025-11-28T00:39:35.831292
-CREATE TABLE "entidades"(
+timestamp: 2025-12-02T07:40:58.286636
+CREATE TABLE "entidades_personas"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
-    "nit_entidad" CHAR(512) NOT NULL UNIQUE,
-    "nombre_entidad" CHAR(512),
+    "documento" CHAR(512) NOT NULL UNIQUE,
+    "tipo_documento" CHAR(512) NOT NULL,
+    "nombre" CHAR(512),
     "departamento" CHAR(512),
     "ciudad" CHAR(512),
     "orden" CHAR(512),
     "sector" CHAR(512),
     "rama" CHAR(512),
-    "entidad_centralizada" CHAR(512)
-);
-success!
-timestamp: 2025-11-28T00:39:35.835268
-CREATE TABLE "proveedoresypersonas"(
-    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
-    "documento" CHAR(512) NOT NULL UNIQUE,
-    "nombre" CHAR(512),
+    "entidad_centralizada" CHAR(512),
+    "nacionalidad" CHAR(512),
+    "genero" CHAR(512),
+    "domicilio" CHAR(512),
     "es_grupo" CHAR(512),
     "es_pyme" CHAR(512),
-    "tipo" CHAR(512)
+    "es_entidad" CHAR(512),
+    "es_proveedor" CHAR(512),
+    "es_representante_legal" CHAR(512),
+    "es_ordenador_del_gasto" CHAR(512),
+    "es_supervisor" CHAR(512)
 );
 success!
-timestamp: 2025-11-28T00:39:35.839958
+timestamp: 2025-12-02T07:40:58.292677
 CREATE TABLE "sancionados"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "documento" CHAR(512) NOT NULL,
     "tipo_inhabilitacion" CHAR(512),
-    "primer_nombre" CHAR(512),
-    "segundo_nombre" CHAR(512),
-    "primer_apellido" CHAR(512),
-    "segundo_apellido" CHAR(512),
     "nombre_completo" CHAR(512),
     "sancion" TEXT,
     "fecha_efectos_juridicos" DATE,

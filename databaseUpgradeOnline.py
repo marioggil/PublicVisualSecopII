@@ -1457,8 +1457,7 @@ claveApiSocrata=extractConfig(nameModel="SocratesApi",dataOut="claveAppApi")
 url=extractConfig(nameModel="SystemData",dataOut="urlApi",relPath=os.path.join(pwd,"experiment_config.json"))
 
 
-# # Unauthenticated client only works with public data sets. Note 'None'
-# # in place of application token, and no username or password:
+
 client = Socrata("www.datos.gov.co", claveApiSocrata)
 
 SancionesSecopI="4n4q-k399"
@@ -1486,7 +1485,7 @@ def load_data_socrata(source="CONTRATOS",max_sample=None,n2save=5000):
         t+=1
         #if db(db["contratos"].id_contrato == item["id_contrato"]).select():
             #continue
-        print(item)
+        #print(item)
         if source =="CONTRATOS":
             guardar_contratos([item])
             procesar_entidades_personas_desde_contrato(item)
@@ -1499,7 +1498,7 @@ def load_data_socrata(source="CONTRATOS",max_sample=None,n2save=5000):
         elif source=="SANCIONADOS SIRI":
             guardar_sancionado_siri(item)
         else:
-            raise InvalidInputError("No valided option")
+            raise ValueError("No valided option")
         
         
         if t % n2save==0:
@@ -1531,11 +1530,10 @@ def load_data_socrata(source="CONTRATOS",max_sample=None,n2save=5000):
 
 
 
-
-
 load_data_socrata(source="CONTRATOS")
-load_data_socrata(source="ADICIONES")
-load_data_socrata(source="EJECUCIONES")
 load_data_socrata(source="AMONESTADOS SECOPI")
 load_data_socrata(source="SANCIONADOS SIRI")
+load_data_socrata(source="ADICIONES")
+load_data_socrata(source="EJECUCIONES")
+
 

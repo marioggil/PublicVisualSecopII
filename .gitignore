@@ -3,3 +3,6 @@ __pycache__/*
 models/__pycache__/*
 databaseUpgradeold.py
 databasesVieja/*
+data/*
+databases_copia/*
+databasescopia/*

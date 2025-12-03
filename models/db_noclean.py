@@ -4,11 +4,11 @@ import os, datetime
 
 pwd = os.getcwd()
 try:
-    os.stat(pwd + '/databases')
+    os.stat(pwd + '/databases_copia')
 except:
-    os.mkdir(pwd + '/databases')
+    os.mkdir(pwd + '/databases_copia')
 
-db = DAL('sqlite://contratos.db', folder='databases')
+db = DAL('sqlite://contratos.db', folder='databases_copia')
 
 # Definición de la tabla (ejemplo simplificado, ajusta según necesites)
 db.define_table('contratos',
@@ -162,8 +162,4 @@ db.define_table('sancionados',
 
 # Índice compuesto para mejorar consultas
 db.executesql('CREATE INDEX IF NOT EXISTS idx_sancionados_documento ON sancionados(documento)')
-
-
-
-
 db.commit()
